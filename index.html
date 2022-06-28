@@ -1,0 +1,23 @@
+<input name='cmd' type='text' >
+<div id='output'>
+</div>
+
+<script>
+	const input = document.querySelector('input');
+	const output = document.querySelector('#output');
+	
+
+	document.addEventListener('DOMContentLoaded', () => {
+		input.onchange = async (e) => {
+		    console.log(e.target.value);
+		    output.innerHTML = await run(e.target.value); 
+	       	}
+	})
+
+	async function run(cmd) {
+		return await fetch('/cmd', {
+					method: 'POST',
+					body: cmd
+				}).then(resp => resp.json())
+		}
+</script>

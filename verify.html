@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Verify you are not robot</title>
+	<script src="https://telegram.org/js/telegram-web-app.js"></script>
+	<style>
+	</style>
+</head>
+
+<body>
+	<div class="frc-captcha" data-sitekey="{{sitekey}}" data-callback="captchaVerify"></div>
+	<script>
+		const $ = document.querySelector.bind(document);
+		let initData = {}
+		function app() {
+			if (window.Telegram.WebApp.initData) {
+				const initDataRaw = decodeURIComponent(window.Telegram.WebApp.initData).split("&")
+				for (let i in initDataRaw) {
+					initData[initDataRaw[i].split("=")[0]] = initDataRaw[i].split("=")[1]
+				}
+			}
+		}
+		document.addEventListener('DOMContentLoaded', app)
+
+		function captchaVerify(solution) {
+			const payload = { ...initData, solution, chat_id: "{{chat_id}}" }
+			fetch('/verify', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			}
+			).then(resp => resp.json())
+				.then(resp => {
+					if (resp.ok) {
+						window.Telegram.WebApp.MainButton.show().setParams({ text: "结束" }).onClick(() => { window.Telegram.WebApp.close() });
+					} else {
+
+					}
+				})
+
+		}
+
+	</script>
+	<script type="module" src="https://cdn.jsdelivr.net/npm/friendly-challenge@0.9.4/widget.module.min.js" async
+		defer></script>
+	<script nomodule src="https://cdn.jsdelivr.net/npm/friendly-challenge@0.9.4/widget.min.js" async defer></script>
+</body>
+
+</html>
