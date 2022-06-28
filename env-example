@@ -1,0 +1,5 @@
+BOT_TOKEN=<telegram-bot-token>
+DOMAIN=
+WEBHOOK=some-random-webhook-endpoint
+FCAPAPIKEY=<your-friendly-captcha-api-key>
+FCAPSITEKEY=<your-friendly-captcha-sitekey>
