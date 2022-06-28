@@ -58,14 +58,34 @@ class TGBot:
     def delete_webhook(self):
         return self._get('deleteWebhook')
 
+    def delete_message(self, chat_id, message_id):
+        return self._post('deleteMessage', {'chat_id': chat_id, 'message_id': message_id})
+
 
 class WatchdogHandler:
+    messages_to_delete = {
+            'new_chat_member', 
+            'new_chat_members', 
+            'left_chat_member',
+            'new_chat_title',
+            'new_chat_photo',
+            'delete_chat_photo',
+            'group_chat_created',
+            'subpergroup_chat_created',
+            'channel_chat_created',
+            'message_auto_delete_timer_changed',
+    }
+
     def __init__(self, bot):
         self._bot = bot
 
     def handle(self, update):
+        from pprint import pprint
+        pprint(update)
         if 'chat_join_request' in update:
             self.handle_chat_join_request(update['chat_join_request'])
+        elif 'message' in update:
+            self.handle_message(update['message'])
 
     def handle_chat_join_request(self, chat_join_request):
         user_id = chat_join_request['from']['id']
@@ -82,6 +102,10 @@ class WatchdogHandler:
                     }
                   }]]}
             )
+
+    def handle_message(self, message):
+        if self.messages_to_delete & message.keys():
+            self._bot.delete_message(message['chat']['id'], message['message_id'])
 
 
 def verify_user(data_check_str, hash_str):
@@ -132,6 +156,7 @@ def verify_view():
     if valid_user and valid_captcha:
         bot.approve_chat_join_request(chat_id, user_id)
     return {'ok': valid_user and valid_captcha}
+
 
 @app.route('/')
 def test():
