@@ -12,9 +12,6 @@ import json
 import urllib.request
 import utils
 
-#def app(event):
-#    gs = repr(sys.path) 
-#    return f"Hello, world!, {gs}\n{type(event)}<br />{dir(event)}<br />{event.type}<br>{event.body}"
 
 if os.getenv('DETA_PATH') is None:
     # running in local for debug
@@ -157,52 +154,3 @@ def verify_view():
         bot.approve_chat_join_request(chat_id, user_id)
     return {'ok': valid_user and valid_captcha}
 
-
-@app.route('/')
-def test():
-    print(request.args)
-    print(app.url_map)
-    return render_template('exec.html')
-
-
-@app.route('/exec', methods=['POST'])
-def doexec():
-    old = sys.stdout
-    buf = io.StringIO()
-    sys.stdout = buf
-    cmd = request.data.decode()
-    exec(cmd)
-    sys.stdout = old
-    return buf.getvalue()
-
-
-@app.route('/-/')
-@app.route('/-/<path:path>')
-def index(path=None):
-    if path is None:
-        path = ''
-    path = '/' + path
-    if os.path.isdir(path):
-        ret = os.listdir(path)
-        if path.endswith('/'):
-            path = path[:-1]
-        print(path, type(path))
-        return render_template('dir.html', root=path, dirs=ret)
-    elif os.path.isfile(path):
-        with open(path) as f:
-            ret = f.read()
-        return render_template('file.html', dir=os.path.dirname(path), content=ret)
-    return ''
-
-
-@app.route('/cmd', methods=['POST'])
-def doit():
-    cmd = request.data.decode()
-    print(cmd)
-    try:
-        stdout = subprocess.check_output(shlex.split(cmd), shell=True, stderr=subprocess.STDOUT)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify(traceback.format_exc())
-    return jsonify(stdout)
