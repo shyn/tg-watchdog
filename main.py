@@ -1,22 +1,11 @@
-import sys
 import os
-import io
-import subprocess
-import shlex
 import hashlib
 import hmac
 from flask import Flask, request, render_template
-from flask.json import jsonify
 
 import json
-import urllib.request
 import utils
 
-
-if os.getenv('DETA_PATH') is None:
-    # running in local for debug
-    from dotenv import load_dotenv  # noqa
-    load_dotenv()
 
 TG_BOT_TOKEN = os.getenv('BOT_TOKEN')
 TG_API = 'https://api.telegram.org/bot'
@@ -117,13 +106,19 @@ handler = WatchdogHandler(bot)
 
 if TG_BOT_TOKEN:
     deta_path = os.getenv('DETA_PATH')
+    railway_path = os.getenv('RAILWAY_STATIC_URL')
     domain = os.getenv('DOMAIN')
-    if not deta_path and not domain:
+    if not deta_path and not domain and not railway_path:
         raise ValueError("seems like you are not running in deta, set a domain then.")
     if not domain:
-        domain = deta_path + '.deta.dev'
+        domain = deta_path + '.deta.dev' if deta_path else railway_path
     webhook_url = f'https://{domain}/{os.getenv("WEBHOOK", "webhook")}'
     bot.set_webhook(webhook_url)
+
+
+@app.route('/')
+def index():
+    return {'ok': True}
 
 
 @app.route('/'+os.getenv('WEBHOOK', 'webhook'), methods=['POST', 'GET'])
@@ -154,3 +149,6 @@ def verify_view():
         bot.approve_chat_join_request(chat_id, user_id)
     return {'ok': valid_user and valid_captcha}
 
+
+if __name__ == '__main__':
+    app.run('0.0.0.0', port=os.getenv('PORT'))
