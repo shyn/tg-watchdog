@@ -116,6 +116,11 @@ if TG_BOT_TOKEN:
     bot.set_webhook(webhook_url)
 
 
+@app.route('/')
+def index():
+    return {'ok': True}
+
+
 @app.route('/'+os.getenv('WEBHOOK', 'webhook'), methods=['POST', 'GET'])
 def tg_webhook_view():
     payload = request.json
@@ -144,3 +149,6 @@ def verify_view():
         bot.approve_chat_join_request(chat_id, user_id)
     return {'ok': valid_user and valid_captcha}
 
+
+if __name__ == '__main__':
+    app.run('0.0.0.0', port=os.getenv('PORT'))
