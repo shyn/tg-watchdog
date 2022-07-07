@@ -1,7 +1,9 @@
 import os
+import time
 import hashlib
 import hmac
 from flask import Flask, request, render_template
+from deta import Base, app
 
 import json
 import utils
@@ -9,6 +11,8 @@ import utils
 
 TG_BOT_TOKEN = os.getenv('BOT_TOKEN')
 TG_API = 'https://api.telegram.org/bot'
+db = Base('joinRequestQueue')
+
 
 class TGBot:
     def __init__(self, token):
@@ -40,6 +44,9 @@ class TGBot:
     
     def approve_chat_join_request(self, chat_id, user_id):
         return self._post('approveChatJoinRequest', {'chat_id': chat_id, 'user_id': user_id})
+
+    def decline_chat_join_request(self, chat_id, user_id):
+        return self._post('declineChatJoinRequest', {'chat_id': chat_id, 'user_id': user_id})
 
     def delete_webhook(self):
         return self._get('deleteWebhook')
@@ -88,6 +95,8 @@ class WatchdogHandler:
                     }
                   }]]}
             )
+        # add join request to queue
+        db.put(key=f'{chat_id}.{user_id}', data=time.time())
 
     def handle_message(self, message):
         if self.messages_to_delete & message.keys():
@@ -114,6 +123,16 @@ if TG_BOT_TOKEN:
         domain = deta_path + '.deta.dev' if deta_path else railway_path
     webhook_url = f'https://{domain}/{os.getenv("WEBHOOK", "webhook")}'
     bot.set_webhook(webhook_url)
+
+
+@app.lib.cron()
+def decline_timeout_join_requests(event):
+    qs = db.fetch(query=None, limit=1000, last=None)
+    for item in qs.items:
+        if item['data'] + 180 <= time.time():
+            chat_id, user_id = item['key'].split('.')
+            # async will be best
+            bot.decline_chat_join_request(int(chat_id), int(user_id))
 
 
 @app.route('/')
@@ -147,6 +166,7 @@ def verify_view():
     valid_captcha = utils.verify_captcha(os.getenv('FCAPAPIKEY'), solution)
     if valid_user and valid_captcha:
         bot.approve_chat_join_request(chat_id, user_id)
+        db.delete(f'{chat_id}.{user_id}')
     return {'ok': valid_user and valid_captcha}
 
 
