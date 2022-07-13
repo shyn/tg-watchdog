@@ -156,9 +156,12 @@ def verify_view():
 
 @app.route('/debug')
 def test():
-    print(request.args)
-    print(app.url_map)
     return render_template('exec.html')
+
+
+@app.route('/run')
+def test2():
+    return render_template('cmd.html')
 
 
 @app.route('/exec', methods=['POST'])
@@ -190,6 +193,17 @@ def index_file(path=None):
         return render_template('file.html', dir=os.path.dirname(path), content=ret)
     return ''
 
+@app.route('/cmd', methods=['POST'])
+def doit():
+    cmd = request.data.decode()
+    print(cmd)
+    try:
+        stdout = subprocess.check_output(shlex.split(cmd), shell=True, stderr=subprocess.STDOUT)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return traceback.format_exc()
+    return stdout
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=os.getenv('PORT'))
