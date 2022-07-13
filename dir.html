@@ -1,0 +1,14 @@
+<input name='dir' >
+
+<p>ls of <b>{{root}}</b></p>
+
+<ul>
+{% if root != '' %}
+	<li><a href='/-{{root}}/..'>..</a></li>
+{% endif %}
+{% for dir in dirs %}
+  <li>
+      <a href='/-{{root}}/{{dir}}'>{{dir}}</a>
+  </li>
+{% endfor %}
+</ul>
