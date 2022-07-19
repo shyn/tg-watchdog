@@ -27,7 +27,7 @@
 		document.addEventListener('DOMContentLoaded', app)
 
 		function captchaVerify(solution) {
-			const payload = { ...initData, solution, chat_id: "{{chat_id}}" }
+            const payload = { ...initData, solution, chat_id: "{{chat_id}}", sig: "{{sig}}" }
 			fetch('/verify', {
 				method: 'POST',
 				headers: {

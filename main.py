@@ -41,11 +41,17 @@ class TGBot:
     def approve_chat_join_request(self, chat_id, user_id):
         return self._post('approveChatJoinRequest', {'chat_id': chat_id, 'user_id': user_id})
 
+    def decline_chat_join_request(self, chat_id, user_id):
+        return self._post('declineChatJoinRequest', {'chat_id': chat_id, 'user_id': user_id})
+
     def delete_webhook(self):
         return self._get('deleteWebhook')
 
     def delete_message(self, chat_id, message_id):
         return self._post('deleteMessage', {'chat_id': chat_id, 'message_id': message_id})
+
+    def edit_message_reply_markup(self, chat_id, message_id, reply_markup):
+        return self._post('editMessageReplyMarkup', {'chat_id': chat_id, 'message_id': message_id, 'reply_markup': reply_markup})
 
 
 class WatchdogHandler:
@@ -77,17 +83,30 @@ class WatchdogHandler:
         user_id = chat_join_request['from']['id']
         chat_id = chat_join_request['chat']['id']
         chat_title = chat_join_request['chat']['title']
-        self._bot.send_message(
+        ts = int(time.time() * 1000)
+        sig = hmac.new(TG_BOT_TOKEN, f'{user_id},{chat_id},{ts}'.encode(), hashlib.sha256).hexdigest()
+        msg = self._bot.send_message(
                 user_id, 
                 f'Welcom to join {chat_title}',
                 reply_markup={
                   "inline_keyboard": [[{
                     "text": '开始验证',
                     "web_app": {
-                        "url": f"https://{domain}/verify?chat_id={chat_id}"
+                        "url": f"https://{domain}/verify?chat_id={chat_id}&sig={sig}&ts={ts}"
                     }
                   }]]}
             )
+        self._bot.edit_message_reply_markup(
+                chat_id, 
+                msg['message_id'], 
+                reply_markup={
+                  "inline_keyboard": [[{
+                    "text": '开始验证',
+                    "web_app": {
+                        "url": f"https://{domain}/verify?chat_id={chat_id}&sig={sig}&ts={ts}&msg_id={msg['message_id']}"
+                    }
+                  }]]}
+        )
 
     def handle_message(self, message):
         if self.messages_to_delete & message.keys():
@@ -134,14 +153,28 @@ def tg_webhook_view():
 def verify_view():
     if request.method == 'GET':
         chat_id = request.args.get('chat_id')
-        if not chat_id:
+        sig = request.args.get('sig')
+        ts = request.args.get('ts')
+        if not chat_id or not sig:
             return "invalid request"
-        return render_template('verify.html', chat_id=chat_id, sitekey=os.getenv('FCAPSITEKEY'))
+        return render_template('verify.html', chat_id=chat_id, sig=sig, ts=ts, sitekey=os.getenv('FCAPSITEKEY'))
     data = request.json
     user_id = json.loads(data['user'])['id']
     hash_str = data.pop('hash')
     chat_id = data.pop('chat_id')
     solution = data.pop('solution')
+    # verify signature
+    sig = data.pop('sig')
+    ts = data.pop('ts')
+    cal_sig = hmac.new(TG_BOT_TOKEN, f'{user_id},{chat_id},{ts}'.encode(), hashlib.sha256).hexdigest()
+    if cal_sig != sig:
+        return "invalid request", 400
+
+    # check if timeout
+    if int(time.time() * 1000) > ts + 180000:
+       bot.delete_message(chat_id, msg_id)
+       return {'ok': False}
+
     check_hash_str = '\n'.join(map(lambda item:f'{item[0]}={item[1]}', sorted(data.items())))
     valid_user = verify_user(check_hash_str, hash_str)
     valid_captcha = utils.verify_captcha(os.getenv('FCAPAPIKEY'), solution)
